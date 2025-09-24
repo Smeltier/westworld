@@ -1,17 +1,15 @@
-from entity import Miner
-from states import EnterMineAndDigForNugget
+from miner import Miner, ENTER_MINE_AND_DIG_FOR_NUGGET
 import time
 
 def main():
 
-    mineiro_bob = Miner("Jobson", 5)
-    mineiro_bob.changeState(EnterMineAndDigForNugget())
+    mineiro_bob: Miner = Miner("Jobson", 5)
+    mineiro_bob.change_state(ENTER_MINE_AND_DIG_FOR_NUGGET)
 
-    steps = 100
-    while steps:
-        time.sleep(2)
+    goal = 100
+    while mineiro_bob.gold_carried < goal:
         mineiro_bob.update()
-        steps -= 1
+        time.sleep(2)
 
 if __name__ == "__main__":
     main()
