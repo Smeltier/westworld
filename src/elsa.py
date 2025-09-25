@@ -22,6 +22,10 @@ class Elsa(BaseGameEntity):
         if telegram.message == Message.HI_HONEY_IM_HOME:
             self.state_machine.change_state(COOK_STEW)
             return True
+        if telegram.message == Message.STEW_READY:
+            MESSAGE_DISPATCHER.dispatch_message(0, self.ID, self.husband_id, Message.STEW_READY)
+            self.state_machine.change_state(DO_HOUSE_WORK)
+            return True
         return False
 
 class ElsaGlobalState(State):
@@ -46,18 +50,16 @@ class CookStew(State):
             print(f"{elsa.name} - {elsa.ID}: Começando a cozinhar o ensopado.")
             elsa.cooking = True
 
-            MESSAGE_DISPATCHER.dispatch_message(0, elsa.ID, elsa.husband_id, Message.STEW_READY)
-
-            elsa.state_machine.change_state(DO_HOUSE_WORK)
+            MESSAGE_DISPATCHER.dispatch_message(1.5, elsa.ID, elsa.ID, Message.STEW_READY)
 
     def execute(self, elsa: Elsa):
-        pass
+        print(f"{elsa.name} - {elsa.ID}: Cozinhando o ensopado..")
 
     def exit(self, elsa: Elsa):
         print(f"{elsa.name} - {elsa.ID}: O ensopado está pronto..")
         elsa.cooking = False
 
-    def on_message(self, entity, telegram) -> bool:
+    def on_message(self, elsa: Elsa, telegram) -> bool:
         return False
 
  
