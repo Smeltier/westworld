@@ -14,3 +14,18 @@ class BaseGameEntity(ABC):
 
     @abstractmethod
     def update(self): pass
+
+class EntityManager:
+    entity_map: dict = {}
+
+    def register_entity(self, new_entity):
+        self.entity_map[new_entity.ID] = new_entity
+
+    def remove_entity(self, entity: BaseGameEntity):
+        if entity.ID in self.entity_map:
+            del self.entity_map[entity.ID]
+
+    def get_entity_from_id(self, id):
+        return self.entity_map.get(id, None)
+
+ENTITY_MANAGER = EntityManager()
