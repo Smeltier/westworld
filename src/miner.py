@@ -1,5 +1,7 @@
+import time
+
 from entity import BaseGameEntity
-from states import State, StateMachine
+from states import State, StateMachine, Telegram, Message
 
 class Miner(BaseGameEntity):
     def __init__(self, name: str, gold_limit: int = 1):
@@ -43,6 +45,9 @@ class Miner(BaseGameEntity):
     def thirsty(self) -> bool:
         return self.thirst > 5
 
+    def handle_message(self, telegram: Telegram) -> bool:
+        if telegram.message == Message.HI_HONEY_IM_HOME:
+            print("")
 
 class MinerGlobalState(State):
     def execute(self, miner):
@@ -58,25 +63,28 @@ class EnterMineAndDigForNugget(State):
 
     location: str = "goldmine"
     
-    def execute(self, miner):
+    def execute(self, miner: Miner):
         miner.add_gold_to_carried(1)
         miner.increase_fatigue()
 
         print(f'{miner.name} - {miner.ID}: Pegando umas pepitas de ouro...')
 
         if miner.pockets_full:
-            miner.change_state(VISIT_BANK_AND_DEPOSIT_GOLD)
+            miner.state_machine.change_state(VISIT_BANK_AND_DEPOSIT_GOLD)
 
         elif miner.thirsty:
-            miner.change_state(QUENCH_THIRST)
+            miner.state_machine.change_state(QUENCH_THIRST)
 
     def enter(self, miner):
         if miner.location != self.location:
-            print(f"{miner.name - miner.ID} : Indo para Mina De Ouro..")
+            print(f"{miner.name} - {miner.ID}: Indo para Mina De Ouro..")
             miner.change_location(self.location)
 
     def exit(self, miner):
-        print(f"{miner.name - miner.ID} : Saindo da Mina de Ouro..")
+        print(f"{miner.name} - {miner.ID}: Saindo da Mina de Ouro..")
+
+    def on_message(self, entity, telegram) -> bool:
+        return False
 
 
 class VisitBankAndDepositGold(State):
@@ -88,16 +96,19 @@ class VisitBankAndDepositGold(State):
         print(f"{miner.name} - {miner.ID}: Depositando ouro. Total na conta: {miner.money_in_bank}.")
         miner.gold_carried = 0
 
-        if miner.wealthy:   miner.change_state(GO_HOME_AND_SLEEP_TIL_RESTED)
-        else:               miner.change_state(ENTER_MINE_AND_DIG_FOR_NUGGET)
+        if miner.wealthy:   miner.state_machine.change_state(GO_HOME_AND_SLEEP_TIL_RESTED)
+        else:               miner.state_machine.change_state(ENTER_MINE_AND_DIG_FOR_NUGGET)
 
     def enter(self, miner):
         if miner.location != self.location:
-            print(f"{miner.name - miner.ID} : Indo para o Banco..")
+            print(f"{miner.name} - {miner.ID}: Indo para o Banco..")
             miner.change_location(self.location)
 
     def exit(self, miner):
-        print(f"{miner.name - miner.ID} : Saindo do Banco..")
+        print(f"{miner.name} - {miner.ID}: Saindo do Banco..")
+
+    def on_message(self, entity, telegram) -> bool:
+        return False
 
 
 class QuenchThirst(State):
@@ -109,16 +120,19 @@ class QuenchThirst(State):
         miner.thirst = 0
         miner.gold_carried -= 2 # Custo da bebida.
 
-        miner.change_state(ENTER_MINE_AND_DIG_FOR_NUGGET)
+        miner.state_machine.change_state(ENTER_MINE_AND_DIG_FOR_NUGGET)
 
     def enter(self, miner):
         if miner.location != self.location:
-            print(f"{miner.name - miner.ID} : Indo para o Saloon..")
+            print(f"{miner.name} - {miner.ID}: Indo para o Saloon..")
             miner.change_location(self.location)
 
     def exit(self, miner):
-        print(f"{miner.name - miner.ID} : Saindo do Saloon..")
+        print(f"{miner.name} - {miner.ID}: Saindo do Saloon..")
 
+    def on_message(self, entity, telegram) -> bool:
+        return False
+    
 
 class GoHomeAndSleepTilRested(State):
 
@@ -129,19 +143,38 @@ class GoHomeAndSleepTilRested(State):
         miner.fatigue -= 1
 
         if miner.rested:
-            miner.change_state(ENTER_MINE_AND_DIG_FOR_NUGGET)
+            miner.state_machine.change_state(ENTER_MINE_AND_DIG_FOR_NUGGET)
 
     def enter(self, miner):
         if miner.location != self.location:
-            print(f"{miner.name - miner.ID} : Indo para Casa..")
+            print(f"{miner.name} - {miner.ID}: Indo para Casa..")
             miner.change_location(self.location)
 
     def exit(self, miner):
-        print(f"{miner.name - miner.ID} : Saindo de Casa..")
+        print(f"{miner.name} - {miner.ID}: Saindo de Casa..")
 
+    def on_message(self, miner: Miner, telegram) -> bool:
+        if telegram.message == Message.STEW_READY:
+            miner.state_machine.change_state(EAT_STEW)
+            return True
+        return False
+    
+class EatStew(State):
+    def enter(self, miner: Miner):
+        if miner.location != "home":
+            print(f"{miner.name} - {miner.ID}: Okay, estou indo..")
+
+    def execute(self, miner: Miner):
+        print(f"{miner.name} - {miner.ID}: Comendo o jantar..")
+
+        miner.state_machine.change_state(ENTER_MINE_AND_DIG_FOR_NUGGET)
+
+    def exit(self, miner: Miner):
+        print(f"{miner.name} - {miner.ID}: Saindo de casa..")
     
 ENTER_MINE_AND_DIG_FOR_NUGGET = EnterMineAndDigForNugget()
 GO_HOME_AND_SLEEP_TIL_RESTED = GoHomeAndSleepTilRested()
 VISIT_BANK_AND_DEPOSIT_GOLD = VisitBankAndDepositGold()
 MINER_GLOBAL_STATE = MinerGlobalState()
 QUENCH_THIRST = QuenchThirst()
+EAT_STEW = EatStew()
